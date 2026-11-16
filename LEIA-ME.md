@@ -36,7 +36,7 @@ supabaseKey: 'SUA-CHAVE-ANON-OU-PUBLISHABLE',
 1. **Usuários:** cadastre quem vai contar (nome, usuário, senha e perfil **Contagem**).
 2. **Base de dados:** suba o relatório de **Saldos por Lote** exportado do sistema (.xml). Também aceita Excel, .csv, .txt ou colado do Excel. O sistema lê sozinho Produto, Lote, Armazém, Saldo, Empenho, Data, Validade e Fabricação. Ele ignora os cabeçalhos repetidos de cada página, deixa entrar só o **armazém 11 – AMOSTRAS** e, por padrão, deixa de fora os lotes com saldo zero. Clique em **Salvar como base de dados**.
    - Como esse relatório não traz a descrição, use o **Cadastro de descrições**: suba uma vez um relatório que tenha a coluna Descrição (por exemplo, o de saldo com Descricao) e o sistema guarda as descrições. Os SKUs que faltarem podem ser digitados ali mesmo.
-3. **Abrir inventário:** dê o nome e clique em **Abrir inventário**. O inventário guarda uma cópia da base como histórico para comparar, e a contagem fica liberada.
+3. **Abrir inventário:** escolha **Geral** (todos os lotes da base) ou **Selecionar itens** (inventário parcial: busque e marque os lotes, marque todos os lotes de um SKU ou cole uma lista de SKUs). Dê o nome e clique em **Abrir inventário**. No inventário parcial, quem conta só consegue lançar os SKUs selecionados. O inventário guarda uma cópia da base como histórico para comparar, e a contagem fica liberada.
 4. **Início:** acompanhe em tempo real o que foi contado, quem contou e as divergências. Quando a 1ª contagem terminar, clique em **Encerrar 1ª contagem e liberar recontagem**. Só os itens divergentes vão para a 2ª contagem (e depois para a 3ª e a 4ª, se precisar).
 5. **Relatório:** mostra o confronto colorido de cada SKU/lote com o sistema:
    - verde: bate com o sistema

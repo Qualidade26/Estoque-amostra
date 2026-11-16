@@ -74,6 +74,7 @@ create table if not exists public.inv_inventarios (
   encerrado_por  text
 );
 alter table public.inv_inventarios add column if not exists rodada int not null default 1;
+alter table public.inv_inventarios add column if not exists tipo text not null default 'geral';   -- geral | parcial (itens selecionados)
 
 -- Relatório de itens do sistema (1 linha por SKU + lote) e o resultado das contagens
 create table if not exists public.inv_itens (
@@ -256,6 +257,12 @@ begin
       select * into it from public.inv_itens
        where inventario_id = p_inv and upper(trim(codigo)) = v_cod and coalesce(trim(lote),'') = '' for update;
     end if;
+  end if;
+
+  -- inventário parcial: só os SKUs selecionados
+  if it.id is null and v_inv.tipo = 'parcial'
+     and not exists (select 1 from public.inv_itens where inventario_id = p_inv and upper(trim(codigo)) = v_cod) then
+    raise exception 'Este SKU não faz parte deste inventário.';
   end if;
 
   if it.id is not null then

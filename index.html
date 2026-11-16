@@ -12,8 +12,8 @@
    (Supabase > Project Settings > API: Project URL e anon/publishable key)
    ===================================================================== */
 window.INV_CONFIG = {
-   supabaseUrl: 'https://iftdopghbihffhhntcbs.supabase.co',
-  supabaseKey: 'sb_publishable_4vEYvD8ZHicpOTQmf1dYuQ_75Mk8cva',
+  supabaseUrl: 'https://SEU-PROJETO.supabase.co',
+  supabaseKey: 'SUA-CHAVE-ANON-OU-PUBLISHABLE',
   dominio: 'inventario-labor.com.br'   // e-mail interno dos usuários: usuario@dominio
 };
 </script>
@@ -670,7 +670,7 @@ function pInicio() {
   const proxPend = aberto ? S.itens.filter(it => precisaRodada(it, inv.rodada) && vazio(it['c'+inv.rodada])).length : 0;
   html += `
   <div class="linha entre" style="margin-bottom:16px">${seletorInventario()}
-    <div class="peq">Data da contagem: <b>${fmtData(inv.data_contagem)}</b> · ${aberto ? `<span class="badge-rod">${inv.rodada}ª contagem em andamento</span>` : '<span class="tag t-pend">Finalizado</span>'}</div>
+    <div class="peq">${inv.tipo === 'parcial' ? '<span class="tag t-pos">Inventário parcial</span> · ' : ''}Data da contagem: <b>${fmtData(inv.data_contagem)}</b> · ${aberto ? `<span class="badge-rod">${inv.rodada}ª contagem em andamento</span>` : '<span class="tag t-pend">Finalizado</span>'}</div>
   </div>
   <div class="card">
     <div class="linha entre" style="margin-bottom:8px"><b style="color:var(--navy-800)">Progresso</b>
@@ -783,12 +783,14 @@ function mostrarDescricao() {
   if (!cod) { el.textContent = ''; el.className = 'desc-sku'; $('boxDescManual').hidden = true; return; }
   const c = S.catalogo.get(cod);
   if (c) { el.textContent = c.descricao || '(sem descrição)'; el.className = 'desc-sku'; $('boxDescManual').hidden = true; }
+  else if (invAtual()?.tipo === 'parcial') { el.textContent = 'Este SKU não faz parte deste inventário. Confira o código.'; el.className = 'desc-sku nao'; $('boxDescManual').hidden = true; }
   else { el.textContent = 'SKU não encontrado no relatório. Confira o código ou informe a descrição abaixo.'; el.className = 'desc-sku nao'; $('boxDescManual').hidden = false; }
 }
 function revisar() {
   const f = S.form, cod = (f.sku || '').trim(), lote = (f.lote || '').trim(), qtd = String(f.qtd ?? '').replace(',', '.').trim();
   const cat = S.catalogo.get(norm(cod));
   if (!cod) return toast('Informe o SKU.', 'erro'), $('fSku').focus();
+  if (!cat && invAtual()?.tipo === 'parcial') return toast('Este SKU não faz parte deste inventário.', 'erro'), $('fSku').focus();
   if (!cat && !(f.descManual||'').trim()) return toast('SKU não está no relatório: informe a descrição.', 'erro'), $('fDescManual').focus();
   if (!lote) return toast('Informe o lote.', 'erro'), $('fLote').focus();
   if (!f.data) return toast(`Informe a data de ${f.tipo === 'V' ? 'validade' : 'fabricação'}.`, 'erro'), $('fData').focus();
@@ -1221,18 +1223,20 @@ async function pInventarios() {
     <div class="card">
       <h3>Abrir inventário</h3>
       ${!b.length ? `<div class="aviso">Primeiro carregue a <b>Base de dados</b> com o relatório de saldo do sistema. <button class="btn small" onclick="irPara('base')">Ir para Base de dados</button></div>` : `
-      <div class="peq" style="margin-bottom:10px">O inventário é aberto com uma cópia da base de dados atual (<b>${b.length}</b> itens, carregada em ${fmtDH(b[0].carregado_em)}). A partir daí a contagem é liberada para quem conta.</div>
-      <div class="linha">
-        <div class="campo"><label>Nome do inventário</label><input id="aiNome" value="${esc(nomeSug)}"></div>
+      <div class="peq" style="margin-bottom:12px">O inventário é aberto com uma cópia da base de dados atual (<b>${b.length}</b> lotes, carregada em ${fmtDH(b[0].carregado_em)}). A partir daí a contagem é liberada para quem conta.</div>
+      <div class="seg" id="aiTipo" style="max-width:460px;margin-bottom:12px"><button type="button" data-t="geral">📦 Geral (todos os itens)</button><button type="button" data-t="parcial">☑️ Selecionar itens</button></div>
+      <div id="aiSel"></div>
+      <div class="linha" style="margin-top:12px">
+        <div class="campo"><label>Nome do inventário</label><input id="aiNome" value="${esc(S.aiNome || nomeSug)}"></div>
         <div class="campo" style="max-width:190px"><label>Data da contagem</label><input type="date" id="aiData" value="${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}-${String(hoje.getDate()).padStart(2,'0')}"></div>
         <div class="campo" style="max-width:180px"><label>Local</label><input id="aiLocal" value="GERAL"></div>
-        <button class="btn verde" id="btnAbrirInv">▶ Abrir inventário (${b.length} itens)</button>
+        <button class="btn verde" id="btnAbrirInv"></button>
       </div>`}
     </div>
     <div class="card">
       <h3>Inventários</h3>
       <div class="tabela" style="max-height:260px"><table><thead><tr><th>Nome</th><th>Data</th><th>Local</th><th>Situação</th><th>Aberto por</th><th></th></tr></thead><tbody>
-        ${S.invs.map(i => `<tr${i.id === S.invId ? ' style="background:#f2f7ff"' : ''}><td><b>${esc(i.nome)}</b></td><td>${fmtData(i.data_contagem)}</td><td>${esc(i.local||'')}</td>
+        ${S.invs.map(i => `<tr${i.id === S.invId ? ' style="background:#f2f7ff"' : ''}><td><b>${esc(i.nome)}</b>${i.tipo === 'parcial' ? ' <span class="tag t-pos">parcial</span>' : ''}</td><td>${fmtData(i.data_contagem)}</td><td>${esc(i.local||'')}</td>
           <td>${i.status === 'aberto' ? `<span class="tag t-ok">${i.rodada}ª contagem</span>` : '<span class="tag t-pend">Finalizado</span>'}</td><td>${esc(i.criado_por||'')}</td>
           <td style="white-space:nowrap">${i.id !== S.invId ? `<button class="btn secondary small" onclick="selecionarInventario(${i.id})">Selecionar</button>` : '<span class="peq">selecionado</span>'}
             <button class="btn secondary small" onclick="formInventario(${i.id})">Editar</button>
@@ -1247,37 +1251,114 @@ async function pInventarios() {
       <div id="tabItens"></div>
     </div>`}
   </div>`;
-  if ($('btnAbrirInv')) $('btnAbrirInv').onclick = abrirInventario;
+  if ($('btnAbrirInv')) {
+    $('btnAbrirInv').onclick = abrirInventario;
+    $('aiNome').oninput = e => S.aiNome = e.target.value;
+    $('aiTipo').querySelectorAll('button').forEach(bt => bt.onclick = () => { S.aiTipo = bt.dataset.t; areaSelecao(); });
+    areaSelecao();
+  }
   if (!inv) return;
   $('bItens').oninput = e => { S.bItens = e.target.value; S.pgItens = 0; tabelaItens(); };
   if ($('btnItemManual')) $('btnItemManual').onclick = () => editarItem(null);
   if ($('btnRecarregar')) $('btnRecarregar').onclick = async () => {
-    if (!await confirmar(`Trocar os ${S.itens.length} itens do inventário <b>${esc(inv.nome)}</b> pelos ${b.length} itens da base atual?`, 'Recarregar')) return;
+    const skus = new Set(S.itens.map(i => norm(i.codigo)));
+    const linhas = inv.tipo === 'parcial' ? b.filter(x => skus.has(norm(x.codigo))) : b;
+    if (!await confirmar(`Trocar os ${S.itens.length} itens do inventário <b>${esc(inv.nome)}</b> pelos ${linhas.length} lotes da base atual${inv.tipo === 'parcial' ? ' (dos mesmos SKUs)' : ''}?`, 'Recarregar')) return;
     try {
       const r = await sb.from('inv_itens').delete().eq('inventario_id', inv.id); if (r.error) throw r.error;
-      await copiarBase(inv.id); toast('Itens recarregados da base.', 'ok'); await selecionarInventario(inv.id);
+      await copiarBase(inv.id, linhas); toast('Itens recarregados da base.', 'ok'); await selecionarInventario(inv.id);
     } catch (e) { toast(erroMsg(e), 'erro'); }
   };
   tabelaItens();
 }
-async function copiarBase(invId) {
-  const regs = S.base.map((x, i) => ({ inventario_id:invId, ordem:i + 1, armazem:x.armazem, codigo:x.codigo, descricao:x.descricao,
+async function copiarBase(invId, linhas = S.base) {
+  const regs = linhas.map((x, i) => ({ inventario_id:invId, ordem:i + 1, armazem:x.armazem, codigo:x.codigo, descricao:x.descricao,
     lote:x.lote, validade:x.validade, fabricacao:x.fabricacao, data_ref:x.data_ref, sistema:x.saldo }));
   for (let i = 0; i < regs.length; i += 500) {
     const { error } = await sb.from('inv_itens').insert(regs.slice(i, i + 500)); if (error) throw error;
   }
 }
+/* ---------- seleção de itens (inventário parcial) ---------- */
+function linhasSelecionadas() { return S.aiTipo === 'parcial' ? S.base.filter(x => S.sel.has(x.id)) : S.base; }
+function areaSelecao() {
+  S.aiTipo ??= 'geral'; S.sel ??= new Set(); S.bSel ??= '';
+  $('aiTipo').querySelectorAll('button').forEach(bt => bt.classList.toggle('ativo', bt.dataset.t === S.aiTipo));
+  const el = $('aiSel');
+  if (S.aiTipo === 'geral') { el.innerHTML = ''; botaoAbrir(); return; }
+  el.innerHTML = `<div class="arquivo" style="background:#fff">
+    <div class="linha" style="align-items:center">
+      <input class="busca" id="selBusca" style="flex:2;min-width:220px" placeholder="Buscar SKU, descrição ou lote" value="${esc(S.bSel)}">
+      <button class="btn secondary small" id="selMarcar">☑ Marcar os da busca</button>
+      <button class="btn secondary small" id="selDesmarcar">☐ Desmarcar os da busca</button>
+      <button class="btn secondary small" id="selColar">📋 Colar lista de SKUs</button>
+      <button class="btn secondary small" id="selLimpar">Limpar seleção</button>
+    </div>
+    <div class="linha entre" style="margin:10px 0 6px"><span class="peq" id="selResumo"></span>
+      <label class="peq"><input type="checkbox" id="selSoMarcados" ${S.soMarcados ? 'checked' : ''}> mostrar só os selecionados</label></div>
+    <div id="selTabela"></div></div>`;
+  $('selBusca').oninput = e => { S.bSel = e.target.value; tabelaSelecao(); };
+  $('selMarcar').onclick = () => { visiveisSel().forEach(x => S.sel.add(x.id)); tabelaSelecao(); };
+  $('selDesmarcar').onclick = () => { visiveisSel().forEach(x => S.sel.delete(x.id)); tabelaSelecao(); };
+  $('selLimpar').onclick = () => { S.sel.clear(); tabelaSelecao(); };
+  $('selSoMarcados').onchange = e => { S.soMarcados = e.target.checked; tabelaSelecao(); };
+  $('selColar').onclick = () => {
+    abrirModal(`<h3>Colar lista de SKUs</h3>
+      <div class="peq" style="margin-bottom:8px">Cole os SKUs (um por linha, ou separados por espaço, vírgula ou ponto e vírgula). Todos os lotes de cada SKU serão selecionados.</div>
+      <textarea id="txtSkus" style="width:100%;height:200px;font-family:monospace;padding:10px;border:1px solid var(--line);border-radius:8px" autofocus></textarea>
+      <div class="modal-acoes"><button class="btn secondary" onclick="fecharModal()">Cancelar</button><button class="btn" id="txtSkusOk">Selecionar</button></div>`);
+    $('txtSkusOk').onclick = () => {
+      const lista = [...new Set($('txtSkus').value.split(/[\s,;]+/).map(norm).filter(Boolean))];
+      const achados = new Set();
+      S.base.forEach(x => { if (lista.includes(norm(x.codigo))) { S.sel.add(x.id); achados.add(norm(x.codigo)); } });
+      const falta = lista.filter(c => !achados.has(c));
+      fecharModal(); tabelaSelecao();
+      toast(`${achados.size} SKUs selecionados.${falta.length ? ` Não estão na base: ${falta.slice(0, 8).join(', ')}${falta.length > 8 ? '…' : ''}` : ''}`, falta.length ? 'erro' : 'ok');
+    };
+  };
+  tabelaSelecao();
+}
+function visiveisSel() {
+  let l = filtrar(S.base, S.bSel);
+  if (S.soMarcados) l = l.filter(x => S.sel.has(x.id));
+  return l;
+}
+function tabelaSelecao() {
+  const lista = visiveisSel(), vis = lista.slice(0, 300), sel = linhasSelecionadas();
+  const porSku = new Map(); S.base.forEach(x => porSku.set(norm(x.codigo), (porSku.get(norm(x.codigo)) || 0) + 1));
+  $('selResumo').innerHTML = `<b>${sel.length}</b> lotes selecionados · <b>${new Set(sel.map(x => norm(x.codigo))).size}</b> SKUs · saldo ${fmtN(sel.reduce((a, x) => a + Number(x.saldo || 0), 0))}`;
+  $('selTabela').innerHTML = `<div class="tabela" style="max-height:340px"><table><thead><tr>
+    <th style="width:34px"><input type="checkbox" id="selTodosVis" ${vis.length && vis.every(x => S.sel.has(x.id)) ? 'checked' : ''} title="Marcar/desmarcar os mostrados"></th>
+    <th>Produto</th><th>Descrição</th><th>Lote</th><th>Validade</th><th class="n">Saldo</th><th></th></tr></thead><tbody>
+    ${vis.map(x => `<tr class="${S.sel.has(x.id) ? 'r-ok' : ''}"><td><input type="checkbox" class="cbSel" data-id="${x.id}" ${S.sel.has(x.id) ? 'checked' : ''}></td>
+      <td><b>${esc(x.codigo)}</b></td><td>${esc(x.descricao)}</td><td>${esc(x.lote)}</td><td>${fmtData(x.validade)}</td><td class="n">${fmtN(x.saldo)}</td>
+      <td>${porSku.get(norm(x.codigo)) > 1 ? `<button class="btn secondary small" data-sku="${esc(x.codigo)}" title="Marcar todos os lotes deste SKU">todos os ${porSku.get(norm(x.codigo))} lotes</button>` : ''}</td></tr>`).join('')
+      || '<tr><td colspan="7" class="vazio">Nada encontrado.</td></tr>'}
+  </tbody></table></div>${lista.length > 300 ? `<div class="peq" style="margin-top:4px">Mostrando 300 de ${lista.length}. Use a busca para achar os outros.</div>` : ''}`;
+  $('selTabela').querySelectorAll('.cbSel').forEach(cb => cb.onchange = () => { const id = Number(cb.dataset.id); cb.checked ? S.sel.add(id) : S.sel.delete(id); tabelaSelecao(); });
+  $('selTabela').querySelectorAll('button[data-sku]').forEach(bt => bt.onclick = () => { S.base.forEach(x => { if (norm(x.codigo) === norm(bt.dataset.sku)) S.sel.add(x.id); }); tabelaSelecao(); });
+  $('selTodosVis').onchange = e => { vis.forEach(x => e.target.checked ? S.sel.add(x.id) : S.sel.delete(x.id)); tabelaSelecao(); };
+  botaoAbrir();
+}
+function botaoAbrir() {
+  const n = linhasSelecionadas().length, bt = $('btnAbrirInv'); if (!bt) return;
+  bt.textContent = S.aiTipo === 'parcial' ? `▶ Abrir inventário parcial (${n} lotes)` : `▶ Abrir inventário geral (${n} lotes)`;
+  bt.disabled = !n;
+}
 async function abrirInventario() {
   const nome = $('aiNome').value.trim(); if (!nome) return toast('Informe o nome do inventário.', 'erro');
+  const linhas = linhasSelecionadas(), parcial = S.aiTipo === 'parcial';
+  if (!linhas.length) return toast('Selecione pelo menos um item.', 'erro');
+  if (parcial && !await confirmar(`Abrir o inventário parcial <b>${esc(nome)}</b> com <b>${linhas.length}</b> lotes (${new Set(linhas.map(x => norm(x.codigo))).size} SKUs)?<br><br>Quem conta só poderá lançar esses SKUs.`, 'Abrir inventário')) return;
   const btn = $('btnAbrirInv'); btn.disabled = true; btn.textContent = 'Abrindo...';
   try {
-    const r = await sb.from('inv_inventarios').insert({ nome, data_contagem:$('aiData').value || null, local:$('aiLocal').value.trim() || 'GERAL',
-      armazem:[...new Set(S.base.map(x => x.armazem).filter(Boolean))].join(' / ') || 'GERAL', criado_por:S.perfil.nome }).select().single();
+    const r = await sb.from('inv_inventarios').insert({ nome, tipo:parcial ? 'parcial' : 'geral', data_contagem:$('aiData').value || null, local:$('aiLocal').value.trim() || 'GERAL',
+      armazem:[...new Set(linhas.map(x => x.armazem).filter(Boolean))].join(' / ') || 'GERAL', criado_por:S.perfil.nome }).select().single();
     if (r.error) throw r.error;
-    await copiarBase(r.data.id);
-    toast(`Inventário aberto com ${S.base.length} itens. A contagem já está liberada.`, 'ok');
+    await copiarBase(r.data.id, linhas);
+    toast(`Inventário ${parcial ? 'parcial ' : ''}aberto com ${linhas.length} lotes. A contagem já está liberada.`, 'ok');
+    S.sel = new Set(); S.aiNome = ''; S.aiTipo = 'geral';
     await carregarInventarios(r.data.id); irPara('inicio');
-  } catch (e) { toast(erroMsg(e), 'erro'); btn.disabled = false; btn.textContent = 'Abrir inventário'; }
+  } catch (e) { toast(erroMsg(e), 'erro'); botaoAbrir(); btn.disabled = false; }
 }
 function filtrar(lista, busca) {
   const b = norm(busca); if (!b) return lista;
@@ -1540,7 +1621,7 @@ function exportarExcel() {
   const inv = invAtual(), r = estatisticas(), wb = XLSX.utils.book_new();
   const bold = { font:{ bold:true, color:{ rgb:'123163' } } };
   // Rosto
-  const rosto = [['INVENTÁRIO DE AMOSTRA'], [], ['Inventário', inv.nome], ['Data da contagem', fmtData(inv.data_contagem)], ['Local', inv.local||''], ['Armazém', inv.armazem||''],
+  const rosto = [['INVENTÁRIO DE AMOSTRA'], [], ['Inventário', inv.nome], ['Tipo', inv.tipo === 'parcial' ? 'PARCIAL (itens selecionados)' : 'GERAL'], ['Data da contagem', fmtData(inv.data_contagem)], ['Local', inv.local||''], ['Armazém', inv.armazem||''],
     ['Rua', inv.rua||''], ['Situação', inv.status === 'aberto' ? `ABERTO (${inv.rodada}ª contagem) — PRÉVIA` : 'FINALIZADO'], ['Finalizado em', inv.encerrado_em ? fmtDH(inv.encerrado_em) : ''],
     ['Planilha gerada em', new Date().toLocaleString('pt-BR')], ['Gerada por', S.perfil.nome], [], ['Supervisão', '', 'Assinatura:'], ['Gerência', '', 'Assinatura:']];
   const wsR = XLSX.utils.aoa_to_sheet(rosto); wsR['!cols'] = [{wch:22},{wch:42},{wch:24}];
