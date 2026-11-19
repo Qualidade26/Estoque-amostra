@@ -60,7 +60,8 @@ Quem conta tem as abas **Início** (andamento da contagem, os próprios lançame
 ## Regras (iguais às da planilha)
 
 - **1ª contagem igual ao sistema:** OK.
-- **1ª contagem diferente do sistema:** vai para a 2ª contagem. Se a 2ª for igual ao sistema ou à 1ª, o item é confirmado. Senão vai para a 3ª, e assim por diante até a 4ª.
+- **1ª contagem diferente do sistema:** vai para a 2ª contagem.
+- **O lote só fecha quando duas contagens seguidas concordam entre si** (2ª = 1ª, ou 3ª = 2ª). Se a 2ª bater com o sistema mas não com a 1ª, o item vai para a 3ª. Se a 3ª não bater com a 2ª, vai para a 4ª, que é a final.
 - **SKU + lote lançado mais de uma vez na mesma contagem** (achado em lugares diferentes): as quantidades são somadas.
 - **SKU/lote que não está no relatório:** entra como **item não listado**, com sistema = 0.
 - **Ao encerrar a 1ª contagem:** o que ninguém lançou fica como **não encontrado (0)**.

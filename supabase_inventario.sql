@@ -148,9 +148,9 @@ returns int language sql immutable as $$
     when p_c1 is null then 1
     when p_c1 = p_sis then 0
     when p_c2 is null then 2
-    when p_c2 = p_sis or p_c2 = p_c1 then 0
+    when p_c2 = p_c1 then 0
     when p_c3 is null then 3
-    when p_c3 = p_sis or p_c3 = p_c1 or p_c3 = p_c2 then 0
+    when p_c3 = p_c2 then 0
     when p_c4 is null then 4
     else 0
   end
