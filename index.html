@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Inventário de Amostra · Labor</title>
+<title>Estoque de Amostra · Labor</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script>
@@ -341,7 +341,7 @@ window.INV_CONFIG = {
 <aside class="sidebar" id="sidebar" hidden>
   <div class="brand">
     <div class="brand-badge">L</div>
-    <div class="brand-text"><b>Labor Health Supply</b><span>Inventário de Amostra</span></div>
+    <div class="brand-text"><b>Labor Health Supply</b><span>Estoque de Amostra</span></div>
     <button class="collapse-btn" id="collapseBtn" title="Recolher menu">«</button>
   </div>
   <nav class="menu" id="menu"></nav>
@@ -2084,14 +2084,14 @@ function exportarHistorico() {
 /* =====================================================================
    INÍCIO — ACOMPANHAMENTO (administrador)
    ===================================================================== */
-function heroHTML(desc, titulo = 'Inventário de Amostra') {
+function heroHTML(desc, titulo = 'Estoque de Amostra') {
   if (desc === null) return `<div class="hero" style="min-height:260px"><div class="hero-image"><img src="${FUNDO}" alt=""></div>
     <div class="hero-overlay"><div class="hero-eyebrow">Labor Health Supply · Uma empresa BUNZL</div><h1 class="hero-title" style="margin:0">${esc(titulo)}</h1></div></div>`;
   return `<div class="hero">
     <div class="hero-image"><img src="${FUNDO}" alt=""></div>
     <div class="hero-overlay">
       <div class="hero-eyebrow">Labor Health Supply · Uma empresa BUNZL</div>
-      <h1 class="hero-title">Inventário de Amostra</h1>
+      <h1 class="hero-title">Estoque de Amostra</h1>
       <p class="hero-desc">${desc}</p>
     </div>
   </div>`;
