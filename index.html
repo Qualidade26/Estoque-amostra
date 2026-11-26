@@ -906,14 +906,20 @@ function redesenharDash() { const el = $('dashPed'); if (!el) return; el.innerHT
 window.addEventListener('resize', () => { clearTimeout(window._rzg); window._rzg = setTimeout(desenharGrafico, 150); });
 /* ---------- resumo por mês editável (meses anteriores ao sistema) ---------- */
 const manualDe = (ano, mes) => (S.resumoManual || []).find(r => Number(r.ano) === ano && Number(r.mes) === mes) || null;
-function mesclarManual(sys, ov) {
-  const ped = Number(ov.pedidos) || 0, tmin = Number(ov.tempo_min) || 0;
-  return { ...sys, manual:true, pedidos:ped, skus:Number(ov.skus) || 0, un:Number(ov.unidades) || 0, itens:0, concluidos:ped, andamento:0, comTempo:tmin > 0 ? ped : 0,
-    tempoTotal:tmin * 60000, tempoMedio:tmin > 0 && ped ? tmin * 60000 / ped : null, topManual:ov.top_sku ? { codigo:ov.top_sku, un:Number(ov.top_un) || 0 } : null };
+/* pedido registrado DEPOIS que o mês manual foi salvo entra somando automaticamente */
+const depoisDoManual = (g, ov) => { const t = Date.parse(ov && ov.atualizado_em), i = Date.parse(g.inicio); return !isNaN(t) && !isNaN(i) && i > t; };
+function mesclarManual(sys, ov) {   // sys = só os pedidos novos (depois do lançamento manual)
+  const ped = Number(ov.pedidos) || 0, tmin = Number(ov.tempo_min) || 0, skM = Number(ov.skus) || 0;
+  const comTempo = (tmin > 0 ? ped : 0) + sys.comTempo, tempoTotal = tmin * 60000 + sys.tempoTotal;
+  let top = ov.top_sku ? { codigo:ov.top_sku, un:Number(ov.top_un) || 0 } : null;
+  if (top) { const s = sys.top.find(t => norm(t.codigo) === norm(top.codigo)); if (s) top = { codigo:top.codigo, un:arred(top.un + s.un) }; }
+  if (sys.top[0] && (!top || sys.top[0].un > top.un)) top = { codigo:sys.top[0].codigo, un:sys.top[0].un };
+  return { ...sys, manual:true, novos:sys.pedidos, skusManual:skM, pedidos:ped + sys.pedidos, skus:skM + sys.skus, un:arred((Number(ov.unidades) || 0) + sys.un),
+    concluidos:ped + sys.concluidos, comTempo, tempoTotal, tempoMedio:comTempo ? tempoTotal / comTempo : null, topManual:top };
 }
 function somarAno(porMes, doAno, ano) {
-  const sysNM = agregarPeriodo(doAno.filter(g => !manualDe(ano, Number(String(g.data).slice(5, 7))))), soma = k => porMes.reduce((a, m) => a + (Number(m[k]) || 0), 0), comTempo = soma('comTempo');
-  return { pedidos:soma('pedidos'), cancelados:soma('cancelados'), itens:soma('itens'), skus:sysNM.skus + porMes.filter(m => m.manual).reduce((a, m) => a + m.skus, 0), un:arred(soma('un')),
+  const sysNM = agregarPeriodo(doAno.filter(g => { const ov = manualDe(ano, Number(String(g.data).slice(5, 7))); return !ov || depoisDoManual(g, ov); })), soma = k => porMes.reduce((a, m) => a + (Number(m[k]) || 0), 0), comTempo = soma('comTempo');
+  return { pedidos:soma('pedidos'), cancelados:soma('cancelados'), itens:soma('itens'), skus:sysNM.skus + porMes.filter(m => m.manual).reduce((a, m) => a + (m.skusManual || 0), 0), un:arred(soma('un')),
     concluidos:soma('concluidos'), andamento:soma('andamento'), comTempo, tempoTotal:soma('tempoTotal'), tempoMedio:comTempo ? soma('tempoTotal') / comTempo : null, top:sysNM.top };
 }
 const fmtHM = min => { min = Math.round(Number(min) || 0); return `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')}`; };
@@ -928,7 +934,7 @@ function resumoPorMesHTML(porMes, ano, mes) {
   return `<div class="linha" style="justify-content:flex-end;margin-bottom:6px">${ed
       ? '<button class="btn small verde" id="rmSalvar">💾 Salvar alterações</button><button class="btn secondary small" id="rmCancelar">Cancelar</button>'
       : '<button class="btn secondary small" id="rmEditar">✎ Editar meses (subir meses anteriores)</button>'}</div>
-    ${ed ? '<div class="aviso azul" style="font-size:12.5px">Digite os números do mês (ex.: de antes do sistema). O que for salvo aqui <b>substitui</b> o cálculo do sistema naquele mês e entra no gráfico e nos totais. Tempo total em horas:minutos (ex.: 12:30). <b>↺</b> volta o mês para os dados do sistema.</div>' : ''}
+    ${ed ? '<div class="aviso azul" style="font-size:12.5px">Digite os números do mês (ex.: de antes do sistema). O que for salvo aqui <b>substitui</b> o cálculo do sistema naquele mês; os pedidos registrados <b>depois</b> de salvar entram somando automaticamente (pedidos, unidades, SKUs e tempo). Tempo total em horas:minutos (ex.: 12:30). <b>↺</b> volta o mês para os dados do sistema.</div>' : ''}
     <div class="tabela" style="max-height:none"><table><thead><tr><th>Mês</th><th class="n">Pedidos</th><th class="n">SKUs</th><th class="n">Unidades</th>${ed ? '' : '<th class="n">Concluídos</th><th class="n">Tempo médio</th>'}<th class="n">Tempo total</th><th>SKU que mais saiu</th>${ed ? '<th></th>' : ''}</tr></thead><tbody>
       ${porMes.map((m, i) => { const ov = manualDe(ano, i + 1), t0 = m.topManual || (m.top && m.top[0] ? { codigo:m.top[0].codigo, un:m.top[0].un } : null);
         if (ed) return `<tr><td><b>${MESES_N[i]}</b>${m.manual ? ' <span class="tag t-pos">✎ manual</span>' : ''}</td><td class="n">${inp('rmP' + i, m.pedidos, 64, 'number')}</td><td class="n">${inp('rmS' + i, m.skus, 64, 'number')}</td><td class="n">${inp('rmU' + i, m.un, 80, 'number')}</td>
@@ -960,7 +966,8 @@ function dashPedidosHTML() {
   const anos = [...new Set([...grupos.map(g => Number(String(g.data).slice(0, 4))).filter(Boolean), ...(S.resumoManual || []).map(r => Number(r.ano)), anoAtual, anoAtual - 1, anoAtual - 2])].sort((a, b) => b - a);
   S.dash ??= { ano:anoAtual, mes:0, barras:'pedidos', horas:false, resumo:lsGet('inv-dash-resumo') !== '0' }; if (!anos.includes(S.dash.ano)) S.dash.ano = anos[0];
   const { ano, mes } = S.dash, doAno = grupos.filter(g => Number(String(g.data).slice(0, 4)) === ano);
-  const porMes = MESES_C.map((_, i) => { const sys = agregarPeriodo(doAno.filter(g => Number(String(g.data).slice(5, 7)) === i + 1)), ov = manualDe(ano, i + 1); return ov ? mesclarManual(sys, ov) : sys; });
+  const porMes = MESES_C.map((_, i) => { const doMes = doAno.filter(g => Number(String(g.data).slice(5, 7)) === i + 1), ov = manualDe(ano, i + 1);
+    return ov ? mesclarManual(agregarPeriodo(doMes.filter(g => depoisDoManual(g, ov))), ov) : agregarPeriodo(doMes); });
   S.dashDados = { porMes, mes };
   const per = mes ? porMes[mes - 1] : somarAno(porMes, doAno, ano), rotulo = `${mes ? MESES_N[mes - 1] + ' de ' : ''}${ano}`, maxUn = Math.max(1, ...per.top.slice(0, 10).map(t => t.un));
   return `<div class="linha entre" style="margin-bottom:12px"><h3 style="margin:0">📊 Pedidos · ${rotulo}</h3>
